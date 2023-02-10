@@ -5,6 +5,7 @@ from requests.auth import HTTPBasicAuth
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from enum import Enum
+from sqlalchemy.exc import SQLAlchemyError
 
 import sqlalchemy
 import pandas as pd
@@ -93,6 +94,19 @@ def end_stage():
                 continue
             current_stage_entry[k] = v
         previous_stages.append(current_stage_entry)
+        previous_stages_json = json.dumps(previous_stages)
+        params = (previous_stages_json,)
+        query = f"""insert into integrations_metadata values (null, json(?))"""
+        try:
+            r_set = db_engine.execute(query, params)
+            print(r_set)
+            status_code = 200
+            response["info"] = "Configuration Saved Successfully"
+        except SQLAlchemyError as e:
+            print(e)
+            response["info"] = "Exception Occured " + e
+            status_code = 400
+        return make_response(response, status_code)
 
 
 def make_and_fire_request(request_data) -> pd.DataFrame:
